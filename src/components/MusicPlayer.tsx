@@ -1,5 +1,3 @@
-'use client';
-
 import { useState, useEffect, useRef } from 'react';
 import { TonePlayer } from '@/lib/tonePlayer';
 import type { Song } from '@/types/music';
