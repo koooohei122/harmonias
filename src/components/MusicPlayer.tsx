@@ -2,11 +2,14 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { TonePlayer, type TrackState } from '@/lib/tonePlayer';
 import { downloadMidi } from '@/lib/midiExport';
 import { PianoRoll } from '@/components/PianoRoll';
+import { ScoreEditor } from '@/components/ScoreEditor';
 import type { Song } from '@/types/music';
 import { STYLES } from '@/types/music';
 
 interface MusicPlayerProps {
   song: Song;
+  apiKey?: string;
+  onSongChange?: (song: Song) => void;
   onGenerateLyrics?: () => Promise<void>;
   isGeneratingLyrics?: boolean;
   onConvertStyle?: () => void;
@@ -14,10 +17,12 @@ interface MusicPlayerProps {
 }
 
 type PlayState = 'stopped' | 'playing' | 'paused';
-type Tab = 'controls' | 'tracks' | 'piano-roll' | 'lyrics';
+type Tab = 'controls' | 'tracks' | 'piano-roll' | 'score-edit' | 'lyrics';
 
 export function MusicPlayer({
   song,
+  apiKey,
+  onSongChange,
   onGenerateLyrics,
   isGeneratingLyrics,
   onConvertStyle,
@@ -112,6 +117,7 @@ export function MusicPlayer({
     { id: 'controls', label: '再生' },
     { id: 'tracks', label: 'トラック' },
     { id: 'piano-roll', label: 'ピアノロール' },
+    { id: 'score-edit', label: '楽譜編集' },
     { id: 'lyrics', label: '歌詞' },
   ];
 
@@ -269,6 +275,16 @@ export function MusicPlayer({
       )}
 
       {activeTab === 'piano-roll' && <PianoRoll song={song} />}
+
+      {activeTab === 'score-edit' && (
+        apiKey && onSongChange ? (
+          <ScoreEditor song={song} apiKey={apiKey} onSongChange={onSongChange} />
+        ) : (
+          <div className="rounded-xl border border-[#1a1a3a] bg-[#0d0d1f] p-6 text-center text-sm text-slate-500">
+            楽譜編集にはAPIキーが必要です
+          </div>
+        )
+      )}
 
       {activeTab === 'lyrics' && (
         <div className="rounded-xl border border-[#1a1a3a] bg-[#0d0d1f] p-4">

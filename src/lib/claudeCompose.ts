@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import type { DetectedNote, Song, Note } from '@/types/music';
+import type { DetectedNote, Song, Note, ChordNote } from '@/types/music';
 
 const styleMap: Record<string, string> = {
   pop: 'Pop', jazz: 'Jazz', classical: 'Classical', rock: 'Rock',
@@ -309,6 +309,111 @@ Keep it to 2 verses and 1-2 choruses. Match the ${styleLabel} genre vibe.`;
   const textBlock = response.content.find((b) => b.type === 'text');
   if (!textBlock || textBlock.type !== 'text') throw new Error('歌詞の生成に失敗しました');
   return textBlock.text;
+}
+
+// ─── Score Editor: Theory-based pitch suggestions ────────────────────────────
+export async function getTheoryValidPitches(
+  apiKey: string,
+  originalNote: string,
+  key: string,
+  role: string,
+  style: string,
+  contextNotes: string[],
+): Promise<string[]> {
+  const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
+  const octaveMatch = originalNote.match(/(-?\d+)$/);
+  const octave = octaveMatch ? parseInt(octaveMatch[1]) : 4;
+
+  const prompt = `Music theory task: list valid alternative pitches.
+Original note: ${originalNote}
+Role in arrangement: ${role}
+Key: ${key}
+Style: ${style}
+Nearby notes for context: ${contextNotes.slice(0, 6).join(', ') || 'none'}
+
+Provide exactly 6-8 musically valid alternative pitches:
+- Must be in the key of ${key} (or strong chromatic tones for ${style})
+- For melody/harmony: prefer voice-leading by step or third from ${originalNote}
+- For bass: prefer root, 3rd, 5th of chord tones in the key
+- Stay within octave ${octave - 1} to ${octave + 1}
+- Include the original note's enharmonic alternatives if useful
+
+Return ONLY a compact JSON array, no markdown:
+["C4","D4","E4"]`;
+
+  const response = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 150,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const textBlock = response.content.find((b) => b.type === 'text');
+  if (!textBlock || textBlock.type !== 'text') return [];
+  const jsonMatch = textBlock.text.match(/\[[\s\S]*?\]/);
+  if (!jsonMatch) return [];
+  try {
+    return JSON.parse(jsonMatch[0]) as string[];
+  } catch {
+    return [];
+  }
+}
+
+// ─── Score Editor: Re-harmonize full song after a note edit ──────────────────
+export async function reharmonizeSong(
+  apiKey: string,
+  song: Song,
+  changedTrackIdx: number,
+  changedNoteIdx: number,
+  newNote: string,
+): Promise<Song> {
+  const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
+
+  const changedTrack = song.tracks[changedTrackIdx];
+  const changedNoteData = changedTrack?.notes[changedNoteIdx];
+  const originalNote =
+    changedNoteData && !Array.isArray((changedNoteData as ChordNote).notes)
+      ? (changedNoteData as Note).note
+      : '?';
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const response = await (client.messages as any).create({
+    model: 'claude-opus-4-6',
+    max_tokens: 8000,
+    thinking: { type: 'adaptive' },
+    messages: [{
+      role: 'user',
+      content: `You are a professional arranger. The user edited one note. Update the full arrangement to harmonically fit this change.
+
+CURRENT SONG JSON:
+${JSON.stringify(song)}
+
+CHANGE APPLIED:
+- Track ${changedTrackIdx} instrument="${changedTrack?.instrument ?? '?'}" role="${changedTrack?.role ?? '?'}"
+- Note index ${changedNoteIdx}: ${originalNote} → ${newNote} (already updated in the JSON above)
+
+RULES:
+1. The changed note is ALREADY in the JSON — do not revert it.
+2. Update chord voicings in chord/harmony tracks so they include or support ${newNote}.
+3. Update bass notes where they conflict with the new harmony.
+4. Keep all drum/percussion tracks EXACTLY unchanged.
+5. Preserve the rhythmic structure (note durations, startBeat values) of every track.
+6. If the changed track role is "melody", also update correctedMelody to reflect the change.
+7. Keep the overall feel and style intact — minimal changes beyond what's needed.
+
+Return ONLY valid JSON in the same structure as the input, no markdown.`,
+    }],
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const textBlock = response.content.find((b: any) => b.type === 'text');
+  if (!textBlock) throw new Error('再ハーモナイズ: レスポンスなし');
+
+  const jsonMatch = textBlock.text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('再ハーモナイズ: JSONが見つかりませんでした');
+
+  const updated = JSON.parse(jsonMatch[0]) as Song;
+  if (!updated.tracks) throw new Error('再ハーモナイズ: 不正なデータ');
+  return updated;
 }
 
 export async function correctMelodyNotes(

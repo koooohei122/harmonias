@@ -331,6 +331,8 @@ export default function Home() {
             <Section step={4} title="生成された曲" active={true} done={false} highlight>
               <MusicPlayer
                 song={song}
+                apiKey={apiKey}
+                onSongChange={setSong}
                 onGenerateLyrics={handleGenerateLyrics}
                 isGeneratingLyrics={isGeneratingLyrics}
                 onConvertStyle={() => setShowStyleConvert(true)}
