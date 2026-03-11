@@ -1,5 +1,3 @@
-'use client';
-
 import { useEffect, useRef, useCallback } from 'react';
 import { usePitchDetection } from '@/hooks/usePitchDetection';
 import type { DetectedNote } from '@/types/music';

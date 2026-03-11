@@ -1,5 +1,3 @@
-'use client';
-
 import { INSTRUMENTS } from '@/types/music';
 
 interface InstrumentSelectorProps {

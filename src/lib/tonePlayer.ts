@@ -11,7 +11,7 @@ function beatToTime(beat: number, beatsPerBar: number): string {
 }
 
 function createSynth(Tone: typeof import('tone'), instrument: string) {
-  const reverb = new Tone.Reverb({ decay: 1.5, wet: 0.2 }).toDestination();
+  const reverb = new Tone.Freeverb({ roomSize: 0.4, dampening: 3000, wet: 0.2 }).toDestination();
 
   switch (instrument.toLowerCase()) {
     case 'piano':

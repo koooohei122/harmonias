@@ -1,5 +1,3 @@
-'use client';
-
 import { useState, useRef, useCallback } from 'react';
 import type { DetectedNote } from '@/types/music';
 
