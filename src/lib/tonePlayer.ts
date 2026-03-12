@@ -427,12 +427,27 @@ export class TonePlayer {
   private initialized = false;
   private playing = false;
   private looping = false;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private ToneRef: any = null;
 
   async initialize() {
     if (this.initialized) return;
     const Tone = await import('tone');
+    this.ToneRef = Tone;
     await Tone.start();
     this.initialized = true;
+  }
+
+  /** Returns the current playback position in beats (0 when stopped). */
+  getCurrentBeat(): number {
+    if (!this.ToneRef || !this.playing) return 0;
+    try {
+      const ticks: number = this.ToneRef.Transport.ticks;
+      const ppq: number = this.ToneRef.Transport.PPQ;
+      return ticks / ppq;
+    } catch {
+      return 0;
+    }
   }
 
   setLoop(enabled: boolean) { this.looping = enabled; }
