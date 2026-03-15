@@ -326,8 +326,11 @@ export default function Home() {
             </div>
           </Section>
 
-          {/* Step 4: Result */}
-          {appState === 'done' && song && (
+        </div>
+
+        {/* Step 4: Result — full-width DAW, outside the narrow container */}
+        {appState === 'done' && song && (
+          <div className="mx-auto max-w-5xl px-4 mt-[-1.5rem]">
             <Section step={4} title="生成された曲" active={true} done={false} highlight>
               <MusicPlayer
                 song={song}
@@ -339,12 +342,12 @@ export default function Home() {
                 onSaveToLibrary={handleSaveToLibrary}
               />
             </Section>
-          )}
+          </div>
+        )}
 
-          <p className="mt-12 text-center text-xs text-slate-700">
-            powered by Claude claude-opus-4-6 + Tone.js
-          </p>
-        </div>
+        <p className="mt-12 text-center text-xs text-slate-700">
+          powered by Claude claude-opus-4-6 + Tone.js
+        </p>
       </main>
     </>
   );
